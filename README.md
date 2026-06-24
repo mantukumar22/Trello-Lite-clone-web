@@ -156,7 +156,7 @@ Create a `.env` file inside the `server/` folder:
 
 ```env
 PORT=5000
-MONGO_URI=mongodb+srv://youruser:yourpassword@cluster0.mongodb.net/trellolite
+MONGO_URI=******************************************************
 ACCESS_SECRET=your_long_random_access_secret
 REFRESH_SECRET=your_long_random_refresh_secret
 EMAIL_USER=yourgmail@gmail.com
