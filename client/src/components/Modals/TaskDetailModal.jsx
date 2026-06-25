@@ -1,6 +1,7 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import taskService from "../../services/taskService";
+import useAuthStore from "../../store/authStore";
 
 const priorityStyles = {
   high: "bg-red-100 text-red-600",
@@ -9,11 +10,14 @@ const priorityStyles = {
 };
 
 const TaskDetailModal = ({ task, onClose, onTaskUpdated, onDeleteTask }) => {
+  const { user } = useAuthStore();
   const [editMode, setEditMode] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [priority, setPriority] = useState(task.priority);
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(task.status);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -45,6 +49,25 @@ const TaskDetailModal = ({ task, onClose, onTaskUpdated, onDeleteTask }) => {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      setStatusLoading(true);
+      const updated = await taskService.moveTask(task._id, {
+        newStatus,
+        newOrder: 0,
+      });
+      setStatus(newStatus);
+      onTaskUpdated(updated);
+      toast.success(
+        `Moved to ${newStatus === "inprogress" ? "In Progress" : newStatus}`,
+      );
+    } catch {
+      toast.error("Failed to update status");
+    } finally {
+      setStatusLoading(false);
+    }
   };
 
   return (
@@ -109,9 +132,52 @@ const TaskDetailModal = ({ task, onClose, onTaskUpdated, onDeleteTask }) => {
             <span className="text-sm font-medium text-gray-500 w-24">
               Status
             </span>
-            <span className="text-sm text-gray-700 capitalize">
-              {task.status === "inprogress" ? "In Progress" : task.status}
-            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleStatusChange("todo")}
+                disabled={status === "todo" || statusLoading}
+                className={`
+        text-xs font-semibold px-3 py-1.5 rounded-lg transition
+        ${
+          status === "todo"
+            ? "bg-blue-600 text-white cursor-default"
+            : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+        }
+      `}
+              >
+                To Do
+              </button>
+
+              <button
+                onClick={() => handleStatusChange("inprogress")}
+                disabled={status === "inprogress" || statusLoading}
+                className={`
+        text-xs font-semibold px-3 py-1.5 rounded-lg transition
+        ${
+          status === "inprogress"
+            ? "bg-yellow-500 text-white cursor-default"
+            : "bg-yellow-50 text-yellow-600 hover:bg-yellow-100"
+        }
+      `}
+              >
+                In Progress
+              </button>
+
+              <button
+                onClick={() => handleStatusChange("done")}
+                disabled={status === "done" || statusLoading}
+                className={`
+        text-xs font-semibold px-3 py-1.5 rounded-lg transition
+        ${
+          status === "done"
+            ? "bg-green-500 text-white cursor-default"
+            : "bg-green-50 text-green-600 hover:bg-green-100"
+        }
+      `}
+              >
+                Done ✓
+              </button>
+            </div>
           </div>
 
           {/* Assignee */}
@@ -195,44 +261,47 @@ const TaskDetailModal = ({ task, onClose, onTaskUpdated, onDeleteTask }) => {
             </div>
           )}
         </div>
-
         {/* Footer buttons */}
         <div className="flex gap-3 mt-6">
-          {/* Delete */}
-          <button
-            onClick={() => onDeleteTask(task._id)}
-            className="px-4 py-2 border border-red-200 text-red-500 text-sm font-medium rounded-lg hover:bg-red-50 transition"
-          >
-            Delete
-          </button>
+          {/* Delete — hide from viewers */}
           {user?.role !== "viewer" && (
-            <div className="flex gap-2 ml-auto">
-              {editMode ? (
-                <>
-                  <button
-                    onClick={() => setEditMode(false)}
-                    className="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={loading}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
-                  >
-                    {loading ? "Saving..." : "Save Changes"}
-                  </button>
-                </>
-              ) : (
+            <button
+              onClick={() => onDeleteTask(task._id)}
+              className="px-4 py-2 border border-red-200 text-red-500 text-sm font-medium rounded-lg hover:bg-red-50 transition"
+            >
+              Delete
+            </button>
+          )}
+
+          <div className="flex gap-2 ml-auto">
+            {editMode ? (
+              <>
+                <button
+                  onClick={() => setEditMode(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
+                >
+                  {loading ? "Saving..." : "Save Changes"}
+                </button>
+              </>
+            ) : (
+              // Hide Edit button from viewers
+              user?.role !== "viewer" && (
                 <button
                   onClick={() => setEditMode(true)}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition"
+                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-lg transition"
                 >
                   Edit Task
                 </button>
-              )}
-            </div>
-          )}
+              )
+            )}
+          </div>
         </div>
       </div>
     </div>

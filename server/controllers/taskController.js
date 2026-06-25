@@ -203,51 +203,62 @@ const moveTask = async (req, res) => {
     const { newStatus, newOrder } = req.body;
 
     if (!newStatus && newOrder === undefined) {
-      return res
-        .status(400)
-        .json({ message: "newStatus and newOrder are required" });
+      return res.status(400).json({ message: 'newStatus and newOrder are required' });
     }
 
     const task = await Task.findById(req.params.id);
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: 'Task not found' });
     }
 
     // Check membership
     const project = await Project.findById(task.project);
-    if (!isMember(project, req.user.id)) {
-      return res.status(403).json({ message: "Access denied" });
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Check if user is member
+    const memberCheck = project.members.some(
+      (m) => m.user.toString() === req.user.id.toString()
+    );
+    if (!memberCheck) {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     const oldStatus = task.status;
 
-    // Update position
     task.status = newStatus;
-    task.order = newOrder;
+    task.order  = newOrder;
 
     await task.save();
 
-    // Send email if task moved to done and has an assignee
-    if (newStatus === "done" && oldStatus !== "done" && task.assignee) {
-      const assigneeUser = await User.findById(task.assignee);
-      if (assigneeUser) {
-        await sendTaskCompletedEmail({
-          toEmail: assigneeUser.email,
-          assigneeName: assigneeUser.name,
-          taskTitle: task.title,
-          projectName: project.title,
-        });
+    // Send email if moved to done
+    if (newStatus === 'done' && oldStatus !== 'done' && task.assignee) {
+      try {
+        const assigneeUser = await User.findById(task.assignee);
+        if (assigneeUser) {
+          await sendTaskCompletedEmail({
+            toEmail:      assigneeUser.email,
+            assigneeName: assigneeUser.name,
+            taskTitle:    task.title,
+            projectName:  project.title
+          });
+        }
+      } catch (emailError) {
+        console.error('Email error:', emailError.message);
       }
     }
 
-    const updatedTask = await task.populate([
-      { path: "assignee", select: "name email" },
-      { path: "createdBy", select: "name email" },
-    ]);
+    // Safe populate
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignee',  'name email')
+      .populate('createdBy', 'name email');
 
     res.status(200).json(updatedTask);
+
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error('moveTask error:', error.message);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

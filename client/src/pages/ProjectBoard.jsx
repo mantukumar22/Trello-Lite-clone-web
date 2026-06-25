@@ -9,6 +9,7 @@ import TaskDetailModal from "../components/Modals/TaskDetailModal";
 import projectService from "../services/projectService";
 import taskService from "../services/taskService";
 import useAuthStore from "../store/authStore";
+import AddMemberModal from "../components/Modals/AddMemberModal";
 
 // Group flat tasks array into object by status
 const organizeTasks = (tasks, columns) => {
@@ -32,6 +33,7 @@ const ProjectBoard = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [showAddMember, setShowAddMember] = useState(false);
 
   // Fetch project + tasks on mount
   useEffect(() => {
@@ -148,6 +150,10 @@ const ProjectBoard = () => {
       toast.error("Failed to delete task");
     }
   };
+  const handleMemberAdded = (updatedProject) => {
+    setProject(updatedProject);
+    toast.success("Member added!");
+  };
 
   if (loading) {
     return (
@@ -165,36 +171,81 @@ const ProjectBoard = () => {
       <Navbar />
 
       {/* Board header */}
-      <div className="px-6 py-4 bg-white border-b border-gray-200 flex items-center justify-between">
+      <div className="px-6 py-4 bg-white border-b border-blue-100 flex items-center justify-between">
         <div>
           <button
             onClick={() => navigate("/dashboard")}
-            className="text-sm text-indigo-600 hover:underline mb-1 block"
+            className="text-sm text-blue-600 hover:underline mb-1 block"
           >
             ← Back to Dashboard
           </button>
-          <h1 className="text-2xl font-bold text-gray-800">{project?.title}</h1>
+          <h1 className="text-2xl font-bold text-blue-900">{project?.title}</h1>
           {project?.description && (
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-blue-400 mt-0.5">
               {project.description}
             </p>
           )}
+
+          {/* Members avatars row */}
+          <div className="flex items-center gap-1 mt-2">
+            <span className="text-xs text-blue-400 mr-1">Members:</span>
+            {project?.members?.map((m, i) => (
+              <div
+                key={i}
+                title={m.user?.name || "Member"}
+                className="
+            w-6 h-6 rounded-full
+            bg-blue-200 text-blue-800
+            flex items-center justify-center
+            text-xs font-bold
+            border-2 border-white
+            -ml-1 first:ml-0
+          "
+              >
+                {m.user?.name?.charAt(0).toUpperCase() || "?"}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Hide Add Task button for viewers */}
-        {user?.role !== "viewer" && (
-          <button
-            onClick={() => setShowCreateTask(true)}
-            className="
-                  px-4 py-2
-                  bg-indigo-600 hover:bg-indigo-700
-                  text-white text-sm font-semibold
-                  rounded-lg transition
-                  "
-          >
-            + Add Task
-          </button>
-        )}
+        {/* Right side buttons */}
+        <div className="flex items-center gap-2">
+          {/* Add Member button — owner only */}
+          {user?.role === "admin" && (
+            <button
+              onClick={() => setShowAddMember(true)}
+              className="
+          flex items-center gap-2
+          px-4 py-2
+          border-2 border-blue-200
+          text-blue-700 text-sm font-semibold
+          rounded-xl hover:bg-blue-50
+          transition
+        "
+            >
+              <span>👥</span>
+              Add Member
+            </button>
+          )}
+
+          {/* Add Task button — non-viewers only */}
+          {user?.role !== "viewer" && (
+            <button
+              onClick={() => setShowCreateTask(true)}
+              className="
+          flex items-center gap-2
+          px-4 py-2
+          bg-linear-to-r from-blue-700 to-blue-500
+          hover:from-blue-800 hover:to-blue-600
+          text-white text-sm font-semibold
+          rounded-xl transition shadow-md
+        "
+            >
+              <span>+</span>
+              Add Task
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Board */}
@@ -225,6 +276,14 @@ const ProjectBoard = () => {
           onClose={() => setSelectedTask(null)}
           onTaskUpdated={handleTaskUpdated}
           onDeleteTask={handleDeleteTask}
+        />
+      )}
+      {/* Add Member Modal */}
+      {showAddMember && (
+        <AddMemberModal
+          projectId={id}
+          onClose={() => setShowAddMember(false)}
+          onMemberAdded={handleMemberAdded}
         />
       )}
     </div>

@@ -1,4 +1,6 @@
 import { Draggable } from "@hello-pangea/dnd";
+import useAuthStore from "../../store/authStore";
+
 
 const priorityStyles = {
   high: "bg-red-100 text-red-600",
@@ -7,6 +9,8 @@ const priorityStyles = {
 };
 
 const TaskCard = ({ task, index, onTaskClick, onDeleteTask }) => {
+  const { user } = useAuthStore(); 
+
   const dueDate = task.dueDate
     ? new Date(task.dueDate).toLocaleDateString("en-US", {
         month: "short",
@@ -17,7 +21,7 @@ const TaskCard = ({ task, index, onTaskClick, onDeleteTask }) => {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
 
   return (
-    <Draggable draggableId={task._id} index={index}>
+    <Draggable draggableId={task._id?.toString()} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -99,7 +103,7 @@ const TaskCard = ({ task, index, onTaskClick, onDeleteTask }) => {
                   text-xs font-bold shrink-0
                 "
                 >
-                  {task.assignee.name?.charAt(0).toUpperCase()}
+                  {task.assignee?.name?.charAt(0).toUpperCase()}
                 </div>
                 <span className="text-xs text-gray-400 truncate max-w-20">
                   {task.assignee.name}
